@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home - ImageFlow</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.svg">
+  <link rel="stylesheet" href="/styles/general.css">
+  <link rel="stylesheet" href="/styles/home.css">
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1>ImageFlow</h1>
+    <nav>
+      <a href="/home">Home</a>
+      <a href="/pictures">Pictures</a>
+      <a href="/logs">Logs</a>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </nav>
+  </header>
+  <main>
+    <section class="upload-section">
+      <h2>Upload Images</h2>
+      <form id="imageForm" enctype="multipart/form-data">
+        <div class="form-group">
+          <label for="image">Select Images (up to 100, max 10MB each):</label>
+          <div class="custom-file-input">
+            <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png" multiple required>
+            <label for="image" class="custom-file-label">Choose Files</label>
+          </div>
+        </div>
+        <div id="fileInfo" class="file-info"></div>
+        <input type="hidden" id="socketId" name="socketId">
+        <button type="submit">Upload</button>
+      </form>
+      <div id="updates" class="update-container"></div>
+      <div id="processedLinks" class="processed-container"></div>
+      <div id="error" class="error"></div>
+    </section>
+  </main>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/scripts/home.js"></script>
+</body>
+</html>

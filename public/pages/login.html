@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - ImageFlow</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.svg">
+  <link rel="stylesheet" href="/styles/general.css">
+  <link rel="stylesheet" href="/styles/login.css">
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1>ImageFlow</h1>
+  </header>
+  <main>
+    <section class="upload-section login-section">
+      <h2>Login</h2>
+      <form id="loginForm" method="POST" action="/login">
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+      </form>
+      <div id="error" class="error"></div>
+    </section>
+  </main>
+  <script src="/scripts/login.js"></script>
+</body>
+</html>

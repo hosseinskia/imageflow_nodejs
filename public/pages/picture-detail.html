@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Picture Details - ImageFlow</title>
+  <link rel="icon" type="image/x-icon" href="/images/favicon.svg">
+  <link rel="stylesheet" href="/styles/general.css">
+  <link rel="stylesheet" href="/styles/picture-detail.css">
+  <link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1>ImageFlow</h1>
+    <nav>
+      <a href="/home">Home</a>
+      <a href="/pictures">Pictures</a>
+      <a href="/logs">Logs</a>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </nav>
+  </header>
+  <main>
+    <section class="picture-detail-section">
+      <div id="metadata" class="metadata"></div>
+      <img id="preview" alt="Preview Image">
+      <button id="downloadBtn">Download ⬇️</button>
+      <div id="downloadStatus"></div>
+    </section>
+  </main>
+  <script src="/scripts/picture-detail.js"></script>
+</body>
+</html>

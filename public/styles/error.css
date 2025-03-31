@@ -1,0 +1,20 @@
+.error-section {
+    background-color: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.error-section p {
+    font-size: 1.2rem;
+    margin: 1rem 0;
+}
+
+.error-section a {
+    color: #e0e0b0;
+    text-decoration: underline;
+}
+
+.error-section a:hover {
+    color: #d0d090;
+}
