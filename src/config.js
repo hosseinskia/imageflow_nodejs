@@ -2,6 +2,7 @@ require('dotenv').config({ debug: true });
 
 const config = {
   env: process.env.IMAGEFLOW_ENV,
+  host: process.env.IMAGEFLOW_HOST,
   port: parseInt(process.env.IMAGEFLOW_PORT, 10),
   username: process.env.IMAGEFLOW_USERNAME,
   password: process.env.IMAGEFLOW_PASSWORD,

@@ -7,10 +7,50 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
+const morgan = require('morgan');
+const sharp = require('sharp');
+const { addCustomMetadataToBuffer } = require('./metadata');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Use morgan middleware to log HTTP requests
+
+// Custom token to capture request body
+morgan.token('body', (req) => {
+    return JSON.stringify(req.body || {});
+});
+
+// Custom token to capture only the path
+morgan.token('path', (req) => req.path);
+
+// Custom token to capture the HTTP method
+morgan.token('type', (req) => req.method);
+
+// Initialize routes with io
+const routesInstance = routesModule(io);
+const { router: routes, logAction, getDownloadLink, downloadTokens } = routesInstance;
+
+// Custom morgan function to filter out static assets and log to console
+app.use(morgan((tokens, req, res) => {
+    const url = tokens.url(req, res);
+
+    // Skip logging for static assets
+    if (url.match(/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|eot|ttf)$/i)) {
+        return null;
+    }
+
+    // Clean and concise log format, logged to console
+    return [
+        `Path: ${tokens.path(req)}`,
+        `Type: ${tokens.type(req)}`,
+        `Status: ${tokens.status(req, res)}`,
+        `Time: ${tokens['response-time'](req, res)} ms`,
+        `Size: ${tokens.res(req, res, 'content-length') || 0}`,
+        `Body: ${tokens.body(req)}` // Only for POST or PUT requests
+    ].join(' | ');
+}));
 
 // Validate required environment variables
 const requiredVars = ['username', 'password', 'sessionSecret'];
@@ -32,10 +72,6 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
-
-// Initialize routes with io
-const routesInstance = routesModule(io);
-const { router: routes, logAction, getDownloadLink, downloadTokens } = routesInstance;
 
 // Rate limiter for login
 const loginRateLimiter = rateLimit({
@@ -64,6 +100,7 @@ const publicUnauthenticatedPaths = [
   '/pages/500.html',
   '/pages/login.html',
   '/pages/image-not-found.html',
+  '/images/favicon.svg'
 ];
 
 app.use((req, res, next) => {
@@ -125,9 +162,35 @@ app.get('/download/:token', async (req, res) => {
   }
 
   const filePath = tokenData.filePath;
-  res.download(filePath, path.basename(filePath), (err) => {
-    if (err) console.error('Download error:', err);
-  });
+  const fileName = path.basename(filePath);
+
+  try {
+    // Determine the file type for Content-Type
+    const ext = path.extname(fileName).toLowerCase();
+    const contentType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+    // Process the image with sharp to strip existing metadata
+    const image = sharp(filePath);
+    const imageBuffer = await image.toBuffer(); // Convert to buffer to strip metadata
+
+    // Debug: Log metadata after processing (should be minimal)
+    const metadata = await sharp(imageBuffer).metadata();
+
+    // Add custom metadata to the buffer
+    const processedImage = await addCustomMetadataToBuffer(imageBuffer, ext);
+
+    // Set headers for download
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Length', processedImage.length);
+
+    // Send the processed image buffer
+    res.end(processedImage);
+  } catch (err) {
+    console.error('Download processing error:', err);
+    await logAction(req, 'Download Failed', `Error: ${err.message}`);
+    res.status(500).sendFile(path.join(__dirname, '../public/pages/500.html'));
+  }
 });
 
 app.get('/', isAuthenticated, (req, res) => res.redirect('/home'));
@@ -151,7 +214,7 @@ app.get('/pictures/:pictureId', isAuthenticated, async (req, res) => {
       console.error('Error checking picture existence:', error);
       res.status(500).sendFile(path.join(__dirname, '../public/pages/500.html'));
     }
-  });
+});
 
 // Explicit logout route
 app.get('/logout', isAuthenticated, async (req, res) => {
@@ -174,12 +237,19 @@ app.use((err, req, res, next) => {
 });
 
 if (config.env === 'dev') {
-  server.listen(config.port, () => {
-    console.log(`ImageFlow running in dev mode on http://localhost:${config.port}`);
+  server.listen(config.port, config.host, () => {
+    console.log(`ImageFlow running in dev mode on http://${config.host}:${config.port}`);
   });
 } else {
   console.log('Set ENV=dev to run locally. For prod, deploy to Vercel.');
 }
 
-process.on('uncaughtException', (err) => console.error('Uncaught Exception:', err.stack));
-process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err.stack);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+  process.exit(1);
+});

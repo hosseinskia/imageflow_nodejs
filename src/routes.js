@@ -6,15 +6,17 @@ const crypto = require('crypto');
 const sharp = require('sharp');
 const { ensureDir } = require('./utils');
 const config = require('./config');
+const { addCustomMetadata } = require('./metadata');
 
 const downloadTokens = new Map();
+
+const logsDir = path.join(__dirname, '../storage/logs');
+const logFile = path.join(logsDir, 'logs.txt');
 
 module.exports = (io) => {
   const router = require('express').Router();
   const originalUploadsDir = path.join(__dirname, '../storage/original_uploads');
   const previewsDir = path.join(__dirname, '../storage/previews');
-  const logsDir = path.join(__dirname, '../storage/logs');
-  const logFile = path.join(logsDir, 'logs.txt');
   const watermarkPath = path.join(__dirname, '../public/images/imageflow_sign.png');
 
   (async () => {
@@ -22,7 +24,13 @@ module.exports = (io) => {
       await ensureDir(originalUploadsDir);
       await ensureDir(previewsDir);
       await ensureDir(logsDir);
-      if (!await fs.access(logFile).catch(() => false)) {
+
+      // Check if logs.txt exists; only create it if it doesn't
+      try {
+        await fs.access(logFile, fs.constants.F_OK);
+        // File exists, do nothing (do not overwrite or empty it)
+      } catch (err) {
+        // File does not exist, create it with an empty string
         await fs.writeFile(logFile, '', 'utf8');
       }
     } catch (err) {
@@ -53,6 +61,7 @@ module.exports = (io) => {
                    userAgent.includes('iPhone') || userAgent.includes('iPad') ? 'iOS' : 'unknown device';
     const logEntry = `${date} | IP: ${ip} | Device: ${device} | Action: ${action}${imageLink ? ` | Image: ${imageLink}` : ''}\n`;
     try {
+      // Write only to logs.txt
       await fs.appendFile(logFile, logEntry, 'utf8');
     } catch (err) {
       console.error('Log write failed:', err);
@@ -97,6 +106,9 @@ module.exports = (io) => {
       .composite([{ input: watermarkBuffer, gravity: 'southwest', blend: 'over' }])
       .jpeg({ quality: 80 })
       .toFile(outputPath);
+
+    // Add custom metadata to the preview image
+    await addCustomMetadata(outputPath);
   };
 
   router.post('/upload', async (req, res) => {
@@ -139,10 +151,28 @@ module.exports = (io) => {
         const link = `/previews/${fileName}`;
         const pictureId = randomString;
 
-        // Strip metadata and save the original image
-        await sharp(file.filepath || file.path)
-          .withMetadata(false) // Remove metadata
-          .toFile(originalPath);
+        // Process the image to strip all metadata
+        const image = sharp(file.filepath || file.path);
+        const imageBuffer = await image.toBuffer(); // Convert to buffer to strip metadata
+
+        // Debug: Check metadata before saving
+        const metadata = await sharp(imageBuffer).metadata();
+
+        // Determine the output format based on the file extension
+        const ext = path.extname(fileName).toLowerCase();
+        if (ext === '.png') {
+          await sharp(imageBuffer)
+            .png({ compressionLevel: 9 })
+            .toFile(originalPath);
+        } else {
+          await sharp(imageBuffer)
+            .jpeg({ quality: 100 })
+            .toFile(originalPath);
+        }
+
+        // Add custom metadata to the original image
+        await addCustomMetadata(originalPath);
+
         await fs.unlink(file.filepath || file.path); // Remove temp file
         await generatePreview(originalPath, previewPath);
 
